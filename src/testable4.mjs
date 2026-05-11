@@ -1,29 +1,24 @@
-// Hard to test: singleton DAO + pg.Pool/env baked in + service welds itself to the DAO.
-// Fix (see testable4.mjs): inject the DAO into the service, inject the pool into the DAO.
-
 import argon2 from "@node-rs/argon2";
 import pg from "pg";
 
-export class PostgresUserDao {
-  static instance;
-
-  static getInstance() {
-    if (!this.instance) {
-      this.instance = new PostgresUserDao();
-    }
-    return this.instance;
-  }
-
-  db = new pg.Pool({
+export function createPool(config = {}) {
+  return new pg.Pool({
     user: process.env.PGUSER,
     host: process.env.PGHOST,
     database: process.env.PGDATABASE,
     password: process.env.PGPASSWORD,
     port: process.env.PGPORT,
+    ...config,
   });
+}
+
+export class PostgresUserDao {
+  constructor(db) {
+    this.db = db;
+  }
 
   close() {
-    this.db.end();
+    return this.db.end();
   }
 
   #rowToUser(row) {
@@ -52,10 +47,15 @@ export class PostgresUserDao {
 }
 
 export class PasswordService {
-  users = PostgresUserDao.getInstance();
+  constructor(users) {
+    this.users = users;
+  }
 
   async changePassword(userId, oldPassword, newPassword) {
     const user = await this.users.getById(userId);
+    if (user === null) {
+      throw new Error("user not found");
+    }
     if (!argon2.verifySync(user.passwordHash, oldPassword)) {
       throw new Error("wrong old password");
     }
