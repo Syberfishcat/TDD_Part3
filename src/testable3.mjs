@@ -1,11 +1,7 @@
-// Hard to test: file I/O is mixed with the parsing logic.
-// Fix (see testable3.mjs): split into a pure parsePeople(csvData) + a thin file-reading wrapper.
-
 import { readFile } from "node:fs/promises";
 import { parse } from "csv-parse/sync";
 
-export async function parsePeopleCsv(filePath) {
-  const csvData = await readFile(filePath, { encoding: "utf8" });
+export function parsePeople(csvData) {
   const records = parse(csvData, {
     skip_empty_lines: true,
     trim: true,
@@ -21,4 +17,9 @@ export async function parsePeopleCsv(filePath) {
     }
     return person;
   });
+}
+
+export async function parsePeopleCsv(filePath) {
+  const csvData = await readFile(filePath, { encoding: "utf8" });
+  return parsePeople(csvData);
 }
